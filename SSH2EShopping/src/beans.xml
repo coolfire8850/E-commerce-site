@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	   xmlns:context="http://www.springframework.org/schema/context"
+	   xmlns:aop="http://www.springframework.org/schema/aop" 
+	   xmlns:tx="http://www.springframework.org/schema/tx"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans-4.2.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop-4.2.xsd
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx.xsd">
+	<!-- 使用txManager必须加上xmlns:tx以及关于tx的schema -->
+	<context:component-scan base-package="com.bindong.shop"/>
+	
+	<!-- <bean id="date" class="java.util.Date"/> -->
+	<!-- 泛型类不能实例化，所有要加lazy-init属性 -->
+	<!-- <bean id="baseService" class="com.bindong.shop.service.implement.BaseServiceImpl" lazy-init="true">
+    	<property name="sessionFactory" ref="sessionFactory"></property>
+    </bean> -->
+    
+   <!--  <bean id="categoryService" class="com.bindong.shop.service.implement.CategoryServiceImpl" parent="baseService"/> -->
+   <!--  <bean id="accountService" class="com.bindong.shop.service.implement.AccountServiceImpl" parent="baseService"/> -->
+   
+    <!-- 如果是prototype类型，默认是使用时创建，不是启动时创建 -->
+   <!--  <bean id="baseAction" class="com.bindong.shop.action.BaseAction" scope="prototype">
+    	<property name="categoryService" ref="categoryService"/>
+    	<property name="accountServuce" ref="accountService"/>
+    </bean>
+    
+    <bean id="categoryAction" class="com.bindong.shop.action.CategoryAction" parent="baseAction"/> -->
+   <!--  <bean id="sendAction" class="com.bindong.shop.action.SendAction"></bean>	 -->
+  <!--   <bean id="productTimerTask" class="com.bindong.shop.threadTask.ProductTimerTask"></bean>
+    <bean id="changeLocale" class="com.bindong.shop.action.ChangeLocale"></bean> -->
+   	
+   		<!-- 使用注解的方式注入配置文件，在java代码中使用注解注入properties文件中相应的value值 -->
+	<bean id="prop" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+		<property name="locations">
+			<array>
+				<value>classpath:public.properties</value>
+			</array>
+		</property>
+	</bean>
+   	
+	<!-- 配置连接池 ，删除hibernate.cfg.xml中重叠的部分,name值需要更改，加载配置文件-->
+	<context:property-placeholder location="classpath:conn.properties"/>
+	<bean id="dataSource" class="${dataSource}"
+		destroy-method="close">
+		
+		<property name="driverClass" value="${driverClass}"/>
+		<property name="jdbcUrl" value="${jdbcUrl}"/>
+	    <property name="user" value="${user}"/>
+		<property name="password" value="${password}"/>
+		
+		<!--连接池中保留的最小连接数。 -->
+		<property name="minPoolSize" value="10" />
+		<!--连接池中保留的最大连接数。Default: 15 -->
+		<property name="maxPoolSize" value="100" />
+		<!--最大空闲时间,1800秒内未使用则连接被丢弃。若为0则永不丢弃。Default: 0 -->
+		<property name="maxIdleTime" value="1800" />
+		<!--当连接池中的连接耗尽的时候c3p0一次同时获取的连接数。Default: 3 -->
+		<property name="acquireIncrement" value="3" />
+		<property name="maxStatements" value="1000" />
+		<property name="initialPoolSize" value="10" />
+		<!--每60秒检查所有连接池中的空闲连接。Default: 0 -->
+		<property name="idleConnectionTestPeriod" value="60" />
+		<!--定义在从数据库获取新连接失败后重复尝试的次数。Default: 30 -->
+		<property name="acquireRetryAttempts" value="30" />
+		<property name="breakAfterAcquireFailure" value="true" />
+		<property name="testConnectionOnCheckout" value="false" />
+	</bean>
+	
+	<bean id="sessionFactory" class="org.springframework.orm.hibernate5.LocalSessionFactoryBean">
+		<property name="dataSource" ref="dataSource"/> <!-- 注入数据源 -->
+		<!-- 加载Hibernate配置文件 -->
+		<property name="configLocation" value="classpath:hibernate.cfg.xml"/>
+	</bean>
+	
+	<!-- 定义Hibernate事务管理器 -->
+	<bean id="transactionManager"
+		class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+	
+
+	<tx:annotation-driven transaction-manager="transactionManager"/>
+	<!-- 配置通知advice,目的是指定哪些方法需要什么类型的事务模式 ,required表示如果存在事务，则支持当前事务，没有就新建一个-->
+	<tx:advice id="advice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="save*" propagation="REQUIRED"/>
+			<tx:method name="update*" propagation="REQUIRED"/>
+			<tx:method name="delete*" propagation="REQUIRED"/>
+			<tx:method name="query*" propagation="REQUIRED"/>
+			<tx:method name="get*" propagation="REQUIRED"/>
+			<tx:method name="*" propagation="SUPPORTS"/><!--supports表示如果当前事务存在，则支持，否则就算  -->
+		</tx:attributes>
+	</tx:advice>
+	
+	<!-- 配置aop切面 -->
+	<aop:config>
+		<!-- 配置哪些包的类要切入事务,包下的所有方法，不管返回值和参数是什么，都要切入事务 -->
+		<aop:pointcut expression="execution(* com.bindong.shop.service.implement.*.*(..))" id="pointcut"/>
+		<!-- aop:pointcut要写在aop:advisor上面，否则会报错 -->
+		<!-- 连接了上面的advice与这里的pointcut -->
+		<aop:advisor advice-ref="advice" pointcut-ref="pointcut"/>
+    </aop:config>
+    
+    
+</beans>

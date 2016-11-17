@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE struts PUBLIC
+	"-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+	"http://struts.apache.org/dtds/struts-2.3.dtd">
+	
+	
+<struts>
+	
+	<constant name="struts.devMode" value="true"/>
+	<constant name="struts.custom.i18n.resources" value="bindong"/>
+	
+	<package name="shop" extends="json-default"><!-- json-default继承了struts default -->
+		
+		<!-- 全局result，对这个package中的所有action有效 -->
+		<global-results>
+			<result name="aindex">/WEB-INF/main/aindex.jsp</result>
+			<result name="index">/index.jsp</result>
+			<result name="error">/error.jsp</result>
+			<result name="stream" type="stream">
+				<param name="inputName">inputStream</param>
+			</result>
+		
+		</global-results>
+		
+		<!-- class对应的是Spring中配置该Action的id值，因为要交给Spring管理 -->
+		<action name="category_*" class="categoryAction" method="{1}">
+			<!-- 必须要先添加json包，然后上面继承json-default -->
+			<result name="jsonMap" type="json">
+				<!--要转换成json对象的数据,pageMap就是CategoryAction中 -->
+				<param name="root">pageMap</param>
+				<!--配置黑名单，过滤不需要的选项，支持正则表达式
+				json格式：{total:3,rows:}
+				 -->
+				<param name="excludeProperties">
+				    <!-- rows[0].account.pass -->
+					rows\[\d+]\.account\.pass <!-- 正则表达式 -->
+				</param>
+			
+			</result>
+			<result name="jsonList" type="json">
+				<param name="root">jsonList</param>
+				<param name="excludeProperties">
+				    <!-- rows[0].account.pass -->
+					rows\[\d+]\.account\.pass <!-- 正则表达式 -->
+				</param>
+			</result>
+			<!-- <result name="stream" type="stream">以stream形式，type为stream
+				<param name="inputName">inputStream</param>inputStream中有action传过来的true 
+			</result> -->
+		</action>
+		
+		<action name="account_*" class="accountAction" method="{1}">
+			<result name="index">/index.jsp</result>
+			<result name="jsonmap" type="json">
+				<param name="root">jsonList</param>
+				<param name="excludeProperties">
+					<!-- [0].pass, [1].pass -->
+					\[\d+\]\.pass,\[\d+\]\.name 
+				</param>
+			</result>
+		</action>
+		
+		<action name="product_*" class="productAction" method="{1}">
+			<result name="jsonMap" type="json">
+				<param name="root">pageMap</param>
+				<param name="excludeProperties">
+					<!-- rows[0].category.account -->
+					rows\[\d+\]\.category\.acount  <!-- 把所有account过滤掉，否则会出现懒加载问题 --> 
+				</param>
+			</result>
+			<result name="stream" type="stream">
+				<param name="inputName">inputStream</param>
+			</result>
+			<result name="details">/detail.jsp</result>
+			<result name="search">/searchResult.jsp</result>
+		
+		</action>
+		
+		<!--用来完成系统  请求转发的action,所有的请求都交给execute-->
+		<action name="send_*_*" class="sendAction">
+			<result name="send">/WEB-INF/{1}/{2}.jsp</result>
+		</action>
+		
+		<action name="sorder_*" class="sorderAction" method="{1}">
+			<!-- 重定向到视图页面，请求参数消失，解决刷新重复提交数据问题 -->
+			<result name="showCart" type="redirect">/showCart.jsp</result>
+			<!-- struts2在转json如果找不到配置的root，就会从值栈的栈顶拿出来数据来转json，
+			所以我们只要将现在拿到的jsonList扔到值栈的栈顶，然后在配置文件中写好result就可以了。 -->
+			<result name="jsonList" type="json"></result>
+		</action>
+		<action name="user_*" class="userAction" method="{1}">
+			<result name="login" type="redirect">/ulogin.jsp</result>
+			<!-- 从栈值中取出数据 -->
+			<result name="goUrl" type="redirect">${#session.goUrl}</result>
+		</action>
+		<action name="shoppingcart_*" class="shoppingcartAction" method="{1}">
+			<result name="bank">/user/bank.jsp</result>
+		</action>
+		
+		<action name="input" class="changeLocale">
+			 <result name="returnUrl">${returnUrl}</result>
+		</action>
+	</package>
+
+</struts>
